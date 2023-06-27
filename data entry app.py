@@ -14,7 +14,7 @@ def clear_input():
     return None
 
 def add_state(defects):
-# takes defect list and returns two lists, one for rework and one for scrap
+# takes defect list and returns two lists, one for rework and one for scrap. also creates spins
     defect_state = ['rework','scrap']
     defect_and_state = [defect+'_'+state for state in defect_state for defect in defects]
    
@@ -41,32 +41,26 @@ def create_new_defect_row(defect):
 
 sg.theme('Dark Blue 3')
 
-excel_file = 'data_entry_test.xlsx'
-df = pd.read_excel(excel_file)
+# excel_file = 'data_entry_test.xlsx'
+# df = pd.read_excel(excel_file)
+
+csv_file = 'data_entry.csv'
+# df = pd.DataFrame(list())             # usar para reinicialiazr el csv
+# df.to_csv('data_entry.csv')           
+df = pd.read_csv(csv_file,header=None)
 
 # list of already known defects
-#known_defects = ['inclusions', 'paint_sags','scratches','transit_damage','missing_paint','missing_paint_corners']
-
+# known_defects = ['inclusions', 'paint_sags','scratches','transit_damage','missing_paint','missing_paint_corners']
 known_defects = pickle.load(open('C:/Users/Vincent/Desktop/FnG Project/added_defects.p', "rb"))
-
-# with open('C:/Users/Vincent/Desktop/FnG Project/added_defects.p', 'wb') as f:
-#     pickle.dump(known_defects, f)
-
 
 # create rework and scrap columns from defects to place in window layout
 defect_layout_col1,defect_layout_col2,defect_and_state = add_state(known_defects)
 defect_and_state_new =[]
 
-# allows user to add new defect
-layout_add_defect = (
-    [sg.Text('New Defect'), sg.InputText(key='new_defect',size=(10,1),expand_x=1), sg.Button('Add')]
-)
-
 # main layout
-layout_main = [
-    [sg.Text('Fill the following fields')]
-   ,[sg.Text('Date'), sg.InputText(key='date',size=(10,1),expand_x=1),
-    sg.CalendarButton("Select Date",close_when_date_chosen=True, target="date", format='%Y-%m-%d',size=(10,1))]
+layout_main_1 = [
+   [sg.Text('Date'), sg.InputText(key='date',size=(10,1),expand_x=1),
+    sg.CalendarButton("Select Date",close_when_date_chosen=True, target='date', format='%Y-%m-%d',size=(10,1))]
    ,[sg.Text('Shift'), sg.Radio('night','shift_group',key='night',default=True)
                      , sg.Radio('am','shift_group',key='am')
                      , sg.Radio('pm','shift_group',key='pm')]
@@ -74,19 +68,26 @@ layout_main = [
                      , sg.Radio('White','colour_group',key='white')]
    ,[sg.Text('Part'), sg.Radio('Front','part_group',key='front',default=True)
                      , sg.Radio('Rear','part_group',key='rear')]
-   ,[sg.Text('Sort Type'), sg.Radio('Normal Sorting','sort_type_group',key='normal_sort',default=True)
-                     , sg.Radio('Resorting','sort_type_group',key='resorting')]
-   ,[sg.Text('Rack Type'), sg.Radio('Normal Rack','rack_type_group',key='normal_rack',default=True)
-                     , sg.Radio('Trial rack - Corner Tape','rack_type_group',key='trial_corner_tape')   
-                     , sg.Radio('Trial rack - Foam','rack_type_group',key='trial_foam')]   
-    ,[sg.Text('Operator'), sg.InputText(key='operator',size=(10,1),expand_x=1)]
-    ,[sg.Text('Operator 2'), sg.InputText(key='operator_2',size=(10,1),expand_x=1)]
-    ,[sg.Column(defect_layout_col1),sg.Column(defect_layout_col2)]
-    ,[sg.Frame('New Defects',[[]], key='-FRAME-')]
-    ,[sg.Submit(disabled=False), sg.Button('Clear'), sg.Exit()]
+   ,[sg.Frame('Sort Type',([[sg.Text('Sort Type'), sg.Radio('Normal Sorting','sort_type_group',key='normal_sort',default=True)
+                     , sg.Radio('Resorting','sort_type_group',key='resorting')]]))]
+   ,[sg.Frame('Rack Type',[
+                    [sg.Radio('     Normal Rack','rack_type_group',key='normal_rack',default=True)]
+                    ,[sg.Radio('     Trial rack - Corner Tape','rack_type_group',key='trial_corner_tape')]   
+                    ,[sg.Radio('     Trial rack - Foam','rack_type_group',key='trial_foam')]])]
+   ,[sg.Text('Operator'), sg.InputText(key='operator',size=(10,1),expand_x=1)]
+   ,[sg.Text('Operator 2'), sg.InputText(key='operator_2',size=(10,1),expand_x=1)]
+   ,[sg.Text('New Defect'), sg.InputText(key='new_defect',size=(10,1),expand_x=1), sg.Button('Add')]
+
 ]
 
-window = sg.Window('Data Entry',[layout_add_defect,layout_main])
+layout_main_2 = [
+    [sg.Column(defect_layout_col1),sg.Column(defect_layout_col2)]
+   ,[sg.Frame('New Defects',[[]], key='-FRAME-')]
+   ,[sg.Frame('Total Checked',[[sg.Spin([x for x in range(0,500)],0,key='total_checked',expand_x=1)]],key='-FRAME 2-')]
+   ,[sg.Submit(disabled=False), sg.Button('Clear'), sg.Exit()]
+]
+
+window = sg.Window('Data Entry',[[sg.Column(layout_main_1),sg.Column(layout_main_2)]])
 
 while True:
     event, values = window.read()
@@ -99,14 +100,14 @@ while True:
         # known_defects = [] - activate line to reset known defects, make corrections if added wrong defect
         pickle.dump(known_defects, open('C:/Users/Vincent/Desktop/FnG Project/added_defects.p',"wb"))
         df2 = pd.DataFrame(known_defects)
-        df2.to_csv('defect_list.csv')
+        df2.to_csv('defect_list.csv') # saves defects in csv for easy editing of list 
     if event == 'Clear':
         clear_input()
         
     if event == 'Submit':
         new_record = pd.DataFrame(values, index=[0])
         df = pd.concat([df, new_record],ignore_index=True)
-        df.to_excel(excel_file,index=False)
+        df.to_csv(csv_file,index=False)
         sg.popup('Data Saved')
         clear_input()
 
@@ -120,3 +121,5 @@ window.close()
 # una vez agregado el defecto nuevodebe concatenarse a la lista ppal. grabar csv con lista de defectos al cerrar, y volver a leerla al abrir, para no perder los defectos agregados
 # - agregar nuevos nuevos trials 
 # - add way to modify defect list
+# - cambiar excels a csv
+# - add total checked and downtime
