@@ -11,6 +11,8 @@ def clear_input():
         window[key].update(value=0)
     for key in defect_and_state_new:
         window[key].update(value=0)
+    window['downtime'].update(value=0)
+    window['total_checked'].update(value=0)
     return None
 
 def add_state(defects):
@@ -34,16 +36,6 @@ def add_state(defects):
     defect_layout_col2 = [[sg.Text('Scrap',background_color='gray',expand_x=1,justification='center')]]
     for defects in defect_and_state[half:]:
         defect_layout_col2 += [[sg.Spin([x for x in range(-100,100)],0,key=defects,expand_x=0)]]  
-    
-    # # spinners for rework   
-    # defect_layout_col1 = [[sg.Text('Rework',background_color='gray',expand_x=1,justification='center')]]
-    # for defects in defect_and_state[0:half]:
-    #     defect_layout_col1 += [[sg.Text(defects.replace('_rework','')),sg.Spin([x for x in range(-100,100)],0,key=defects,expand_x=0)]]
-
-    # # spinners for scrap
-    # defect_layout_col2 = [[sg.Text('Scrap',background_color='gray',expand_x=1,justification='center')]]
-    # for defects in defect_and_state[half:]:
-    #     defect_layout_col2 += [[sg.Text(defects.replace('_scrap','')),sg.Spin([x for x in range(-100,100)],0,key=defects,expand_x=0)]]
 
     return defect_layout_col0,defect_layout_col1,defect_layout_col2,defect_and_state
 
@@ -58,14 +50,8 @@ def create_new_defect_row(defect):
 
 sg.theme('Dark Blue 3')
 
-
 excel_file = 'data_entry.xlsx'
 df = pd.read_excel(excel_file)
-
-# csv_file = 'data_entry.csv'
-# # df = pd.DataFrame(list('A'))             # usar para reinicialiazr el csv
-# # df.to_csv('data_entry.csv')           # usar para reinicialiazr el csv
-# df = pd.read_csv(csv_file,header=None)
 
 # list of already known defects
 # known_defects = ['inclusions', 'paint_sags','scratches','transit_damage','missing_paint','missing_paint_corners']
@@ -79,7 +65,8 @@ defect_and_state_new =[]
 layout_main_1 = [
     [sg.Text('Date   '),    sg.InputText(key='date_checked', enable_events=True,readonly=True,
                                       expand_x=1,expand_y=1,size=(10,1))
-                           ,sg.CalendarButton("Select Date",close_when_date_chosen=True, target='date_checked', format='%Y-%m-%d',size=(10,1),key='calendar_button')]
+                           ,sg.CalendarButton("Select Date",close_when_date_chosen=True, target='date_checked',
+                                              format='%Y-%m-%d',size=(10,1),key='calendar_button')]
    ,[sg.Text('Shift    '),  sg.Radio('night ','shift_group',key='night',default=True)
                            ,sg.Radio('am  ','shift_group',key='am')
                            ,sg.Radio('pm','shift_group',key='pm')]
@@ -113,8 +100,11 @@ window = sg.Window('Data Entry',[[sg.Column(layout_main_1),sg.Column(layout_main
 while True:
     event, values = window.read()
     if event == sg.WIN_CLOSED or event == 'Exit':
-        # run the data transformation scripto before closing
+        # save to excel
+        df.to_excel(excel_file,index=False)
+        # run the data transformation script and upload to sql before closing
         exec(open("excel file transformation.py").read()) # not very elegant - should call __main__
+        exec(open("excel to sql.py").read())
         break
     
     if event == 'Add': 
@@ -135,8 +125,6 @@ while True:
         else:
             new_record = pd.DataFrame(values, index=[0])
             df = pd.concat([df, new_record],ignore_index=True)
-            # df.to_csv(csv_file,index=False)
-            df.to_excel(excel_file,index=False)
             sg.popup('Data Saved')
             clear_input()
             
@@ -148,8 +136,9 @@ window.close()
 # - DONE dont clear date, it will be used again in next submit
 # - DONE resetear spins a 0 luego de cada submit 
 # - DONE manera facil de agregar nuevos defectos
-# - agregar nuevos nuevos trials - na...
-# - add way to modify defect list
 # - DONE cambiar excels a csv
 # - DONE add total checked and downtime
+
 # - show a list of already entered data for the chosen date
+# - agregar nuevos nuevos trials - na...
+# - add way to modify defect list
